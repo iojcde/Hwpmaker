@@ -116,5 +116,5 @@ test('generateSectionXml supports context tables', () => {
   assert.ok(xml.includes('자료 1'));
   assert.ok(xml.includes('항목'));
   assert.ok(xml.includes('20'));
-  assert.match(xml, /<hp:tbl[^>]+rowCnt="3"[^>]+colCnt="2"[^>]+borderFillIDRef="7"/);
+  assert.match(xml, /<hp:tbl[^>]+rowCnt="3"[^>]+colCnt="2"[^>]+borderFillIDRef="22"/);
 });

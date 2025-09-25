@@ -909,7 +909,7 @@ function buildContextDataTable({
   return [
     `  <hp:p id="${paragraphId}" paraPrIDRef="3" styleIDRef="4" pageBreak="0" columnBreak="0" merged="0">`,
     '    <hp:run charPrIDRef="61">',
-    `      <hp:tbl id="${tableId}" zOrder="12" numberingType="TABLE" textWrap="TOP_AND_BOTTOM" textFlow="BOTH_SIDES" lock="0" dropcapstyle="None" pageBreak="NONE" repeatHeader="1" rowCnt="${totalRows}" colCnt="${columnCount}" cellSpacing="0" borderFillIDRef="7" noAdjust="0">`,
+    `      <hp:tbl id="${tableId}" zOrder="12" numberingType="TABLE" textWrap="TOP_AND_BOTTOM" textFlow="BOTH_SIDES" lock="0" dropcapstyle="None" pageBreak="NONE" repeatHeader="1" rowCnt="${totalRows}" colCnt="${columnCount}" cellSpacing="0" borderFillIDRef="22" noAdjust="0">`,
     `        <hp:sz width="30611" widthRelTo="ABSOLUTE" height="${tableHeight}" heightRelTo="ABSOLUTE" protect="0" />`,
     '        <hp:pos treatAsChar="1" affectLSpacing="0" flowWithText="1" allowOverlap="0" holdAnchorAndSO="0" vertRelTo="PARA" horzRelTo="PARA" vertAlign="TOP" horzAlign="LEFT" vertOffset="0" horzOffset="0" />',
     '        <hp:outMargin left="0" right="0" top="0" bottom="0" />',
@@ -964,6 +964,136 @@ function buildContextDataTableBlocks({
   return blocks;
 }
 
+function buildUnifiedContextTable({
+  paragraphId,
+  tableId,
+  entries,
+  paragraphIdFactory,
+  tableIdFactory
+}) {
+  if (!entries || entries.length === 0) {
+    return '';
+  }
+
+  const rowHeights = [];
+  const rows = [];
+
+  entries.forEach((entry, rowIndex) => {
+    if (entry.type === 'table') {
+      // Handle data table entries - embed them as a nested table within a cell
+      const labelText = entry.label || '';
+      const rowHeight = estimateContextRowHeight(labelText) + 3000; // Extra height for nested table
+      rowHeights.push(rowHeight);
+
+      const nestedTableId = tableIdFactory();
+      const nestedTable = buildContextDataTable({
+        entry,
+        paragraphId: paragraphIdFactory(),
+        tableId: nestedTableId,
+        paragraphIdFactory
+      });
+
+      let cellContent;
+      if (labelText) {
+        const labelParagraphId = paragraphIdFactory();
+        const labelParagraph = buildParagraph({
+          id: labelParagraphId,
+          paraPrIDRef: '60',
+          styleIDRef: '44',
+          charPrIDRef: '46',
+          text: labelText,
+          lineSegOptions: {
+            spacing: 516,
+            horzsize: 28908,
+            flags: '1441792'
+          },
+          indent: '              '
+        });
+        cellContent = [labelParagraph, nestedTable].join('\n');
+      } else {
+        cellContent = nestedTable;
+      }
+
+      rows.push([
+        '        <hp:tr>',
+        '          <hp:tc name="" header="0" hasMargin="0" protect="0" editable="0" dirty="0" borderFillIDRef="6">',
+        '            <hp:subList id="" textDirection="HORIZONTAL" lineWrap="BREAK" vertAlign="CENTER" linkListIDRef="0" linkListNextIDRef="0" textWidth="0" textHeight="0" hasTextRef="0" hasNumRef="0">',
+        cellContent,
+        '            </hp:subList>',
+        `            <hp:cellAddr colAddr="0" rowAddr="${rowIndex}" />`,
+        '            <hp:cellSpan colSpan="1" rowSpan="1" />',
+        `            <hp:cellSz width="30611" height="${rowHeight}" />`,
+        '            <hp:cellMargin left="850" right="850" top="850" bottom="850" />',
+        '          </hp:tc>',
+        '        </hp:tr>'
+      ].join('\n'));
+    } else {
+      // Handle text entries - same as before
+      const entryParagraphId = paragraphIdFactory();
+      const displayText = entry.label ? `${entry.label} : ${entry.text}` : entry.text;
+      const rowHeight = estimateContextRowHeight(displayText) + 1700;
+      rowHeights.push(rowHeight);
+
+      const paragraph = buildParagraph({
+        id: entryParagraphId,
+        paraPrIDRef: '60',
+        styleIDRef: '44',
+        charPrIDRef: '46',
+        text: displayText,
+        lineSegOptions: {
+          spacing: 516,
+          horzsize: 28908,
+          flags: '1441792'
+        },
+        indent: '              '
+      });
+
+      rows.push([
+        '        <hp:tr>',
+        '          <hp:tc name="" header="0" hasMargin="0" protect="0" editable="0" dirty="0" borderFillIDRef="6">',
+        '            <hp:subList id="" textDirection="HORIZONTAL" lineWrap="BREAK" vertAlign="CENTER" linkListIDRef="0" linkListNextIDRef="0" textWidth="0" textHeight="0" hasTextRef="0" hasNumRef="0">',
+        paragraph,
+        '            </hp:subList>',
+        `            <hp:cellAddr colAddr="0" rowAddr="${rowIndex}" />`,
+        '            <hp:cellSpan colSpan="1" rowSpan="1" />',
+        `            <hp:cellSz width="30611" height="${rowHeight}" />`,
+        '            <hp:cellMargin left="850" right="850" top="850" bottom="850" />',
+        '          </hp:tc>',
+        '        </hp:tr>'
+      ].join('\n'));
+    }
+  });
+
+  const tableHeight = rowHeights.reduce((total, height) => total + height, 1700);
+  const outerLineseg = buildLinesegArray({
+    vertsize: tableHeight,
+    textheight: tableHeight,
+    baseline: Math.max(978, tableHeight - 360),
+    spacing: 460,
+    horzpos: 1130,
+    horzsize: 30558,
+    flags: '393216'
+  }, '    ');
+
+  return [
+    `  <hp:p id="${paragraphId}" paraPrIDRef="3" styleIDRef="4" pageBreak="0" columnBreak="0" merged="0">`,
+    '    <hp:run charPrIDRef="61">',
+    `      <hp:tbl id="${tableId}" zOrder="12" numberingType="TABLE" textWrap="TOP_AND_BOTTOM" textFlow="BOTH_SIDES" lock="0" dropcapstyle="None" pageBreak="NONE" repeatHeader="1" rowCnt="${entries.length}" colCnt="1" cellSpacing="0" borderFillIDRef="7" noAdjust="0">`,
+    '        <hp:sz width="30611" widthRelTo="ABSOLUTE" height="' + tableHeight + '" heightRelTo="ABSOLUTE" protect="0" />',
+    '        <hp:pos treatAsChar="1" affectLSpacing="0" flowWithText="1" allowOverlap="0" holdAnchorAndSO="0" vertRelTo="PARA" horzRelTo="PARA" vertAlign="TOP" horzAlign="LEFT" vertOffset="0" horzOffset="0" />',
+    '        <hp:outMargin left="0" right="0" top="0" bottom="0" />',
+    '        <hp:inMargin left="850" right="850" top="850" bottom="850" />',
+    rows.join('\n'),
+    '      </hp:tbl>',
+    '    </hp:run>',
+    '    <hp:run charPrIDRef="1">',
+    '      <hp:t />',
+    '    </hp:run>',
+    outerLineseg,
+    '  </hp:p>'
+  ].join('\n');
+}
+
 function buildContextBlocks({
   entries,
   paragraphIdFactory,
@@ -974,46 +1104,19 @@ function buildContextBlocks({
   }
 
   const normalizedEntries = entries.map(normalizeContextEntry);
-  const blocks = [];
-  let pendingTextEntries = [];
-
-  const flushTextEntries = () => {
-    if (pendingTextEntries.length === 0) {
-      return;
-    }
-
-    const paragraphId = paragraphIdFactory();
-    const tableId = tableIdFactory();
-    const textTable = buildContextTable({
-      paragraphId,
-      tableId,
-      entries: pendingTextEntries,
-      paragraphIdFactory
-    });
-
-    if (textTable) {
-      blocks.push(textTable);
-    }
-
-    pendingTextEntries = [];
-  };
-
-  normalizedEntries.forEach((entry) => {
-    if (entry.type === 'table') {
-      flushTextEntries();
-      blocks.push(...buildContextDataTableBlocks({
-        entry,
-        paragraphIdFactory,
-        tableIdFactory
-      }));
-    } else {
-      pendingTextEntries.push(entry);
-    }
+  
+  // Create a single context table that contains all entries (text and data tables)
+  const paragraphId = paragraphIdFactory();
+  const tableId = tableIdFactory();
+  const contextTable = buildUnifiedContextTable({
+    paragraphId,
+    tableId,
+    entries: normalizedEntries,
+    paragraphIdFactory,
+    tableIdFactory
   });
 
-  flushTextEntries();
-
-  return blocks;
+  return contextTable ? [contextTable] : [];
 }
 
 function estimateContextRowHeight(text) {
