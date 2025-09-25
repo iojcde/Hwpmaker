@@ -37,7 +37,7 @@ const SAMPLE_PAYLOAD = {
         'ㄱ, ㄴ',
         'ㄱ, ㄴ, ㄷ'
       ],
-  answer: '⑤',
+      answer: '⑤',
       explanation: '스크립트는 반복 작업을 자동화하고 확장하기 쉽습니다.'
     }
   ]
