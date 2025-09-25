@@ -1,0 +1,19 @@
+{
+  "name": "Hwpmaker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/hwpGenerator.js",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "minify": "node minify.js",
+    "generate:xml": "node scripts/generateSectionXml.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.13.1",
+  "dependencies": {
+    "minify-xml": "^4.5.2"
+  }
+}
