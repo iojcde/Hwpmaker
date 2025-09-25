@@ -50,7 +50,7 @@ test('generateSectionXml creates XML for a single question', () => {
   assert.match(xml, /<hp:tbl[^>]+rowCnt="3"[^>]+colCnt="3"[^>]+borderFillIDRef="22"/);
   assert.match(xml, /colCnt="10"/);
   assert.ok(xml.includes('<hp:cellSz width="30611"'));
-  assert.ok(xml.includes('&lt;보기&gt;'));
+  assert.ok(xml.includes('&lt;보 기&gt;'));
   assert.ok(xml.includes('A 씨 : 가업을 계승하여 자랑스럽고 복리 후생을 중시한다.'));
   assert.ok(xml.includes('A 씨는 귀속주의적 직업관을 가진다.'));
   assert.ok(xml.includes('B 씨는 변화 지향 가치를 중시한다.'));
@@ -84,4 +84,37 @@ test('generateSectionXml supports multiple questions and custom choice numerals'
   DEFAULT_CHOICE_NUMERALS.slice(0, 2).forEach((numeral) => {
     assert.ok(!xml.includes(`${numeral} 선택 1`));
   });
+});
+
+test('generateSectionXml supports context tables', () => {
+  const xml = generateSectionXml({
+    questions: [
+      {
+        prompt: '표 자료를 활용하는 문제',
+        contextEntries: [
+          { label: '배경', text: '제공된 자료를 분석하고 결론을 도출하시오.' },
+          {
+            label: '자료 1',
+            table: {
+              headers: [
+                { label: '항목', key: 'item' },
+                { label: '값', key: 'value' }
+              ],
+              rows: [
+                { item: 'A', value: '10' },
+                { item: 'B', value: '20' }
+              ]
+            }
+          }
+        ],
+        choices: ['선택지 1', '선택지 2', '선택지 3']
+      }
+    ]
+  });
+
+  assert.ok(xml.includes('배경 : 제공된 자료를 분석하고 결론을 도출하시오.'));
+  assert.ok(xml.includes('자료 1'));
+  assert.ok(xml.includes('항목'));
+  assert.ok(xml.includes('20'));
+  assert.match(xml, /<hp:tbl[^>]+rowCnt="3"[^>]+colCnt="2"[^>]+borderFillIDRef="7"/);
 });

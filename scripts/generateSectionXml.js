@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 import minifyXml from 'minify-xml';
 
-import { generateSectionXml } from '../src/hwpGenerator.js';
+import { generateSectionXml, DEFAULT_MINIFY_OPTIONS } from '../src/hwpGenerator.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,9 +22,19 @@ const SAMPLE_PAYLOAD = {
         {
           label: '정보',
           text: '스크립트는 JSON 파일을 읽어 HWP XML을 생성합니다.'
+        },
+        {
+          label: '자료 표',
+          table: {
+            headers: ['연도', '매출'],
+            rows: [
+              ['2023', '120'],
+              ['2024', '180']
+            ]
+          }
         }
       ],
-      statementTitle: '<보기>',
+      statementTitle: '<보 기>',
       statements: [
         '단일 명령으로 XML 파일을 만들 수 있다.',
         '여러 문제를 한 번에 생성하도록 확장할 수 있다.'
@@ -41,23 +51,6 @@ const SAMPLE_PAYLOAD = {
       explanation: '스크립트는 반복 작업을 자동화하고 확장하기 쉽습니다.'
     }
   ]
-};
-const DEFAULT_MINIFY_OPTIONS = {
-  removeComments: true,
-  removeWhitespaceBetweenTags: true,
-  considerPreserveWhitespace: true,
-  collapseWhitespaceInTags: true,
-  collapseEmptyElements: true,
-  trimWhitespaceFromTexts: false,
-  collapseWhitespaceInTexts: false,
-  collapseWhitespaceInProlog: true,
-  collapseWhitespaceInDocType: true,
-  removeSchemaLocationAttributes: false,
-  removeUnnecessaryStandaloneDeclaration: true,
-  removeUnusedNamespaces: false,
-  removeUnusedDefaultNamespace: false,
-  shortenNamespaces: false,
-  ignoreCData: true
 };
 
 function printHelp() {

@@ -1,3 +1,5 @@
+import minifyXml from 'minify-xml';
+
 const XML_DECLARATION = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
 
 const SECTION_NAMESPACES = [
@@ -22,6 +24,24 @@ const SECTION_OPEN = `${XML_DECLARATION}\n<hs:sec ${SECTION_NAMESPACES}>`;
 const SECTION_CLOSE = '</hs:sec>';
 
 const DEFAULT_CHOICE_NUMERALS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
+const DEFAULT_STATEMENT_TITLE = '<보 기>';
+const DEFAULT_MINIFY_OPTIONS = {
+  removeComments: true,
+  removeWhitespaceBetweenTags: true,
+  considerPreserveWhitespace: true,
+  collapseWhitespaceInTags: true,
+  collapseEmptyElements: true,
+  trimWhitespaceFromTexts: false,
+  collapseWhitespaceInTexts: false,
+  collapseWhitespaceInProlog: true,
+  collapseWhitespaceInDocType: true,
+  removeSchemaLocationAttributes: false,
+  removeUnnecessaryStandaloneDeclaration: true,
+  removeUnusedNamespaces: false,
+  removeUnusedDefaultNamespace: false,
+  shortenNamespaces: false,
+  ignoreCData: true
+};
 const CHOICE_LAYOUTS = {
   PARAGRAPH: 'paragraph',
   TABLE: 'table'
@@ -118,10 +138,12 @@ function buildContextTable({
   entries,
   paragraphIdFactory
 }) {
-  const normalizedEntries = entries.map(normalizeContextEntry);
+  if (!entries || entries.length === 0) {
+    return '';
+  }
   const rowHeights = [];
 
-  const rows = normalizedEntries.map((entry, rowIndex) => {
+  const rows = entries.map((entry, rowIndex) => {
     const entryParagraphId = paragraphIdFactory();
     const displayText = entry.label ? `${entry.label} : ${entry.text}` : entry.text;
     const rowHeight = estimateContextRowHeight(displayText) + 1700; // include cell padding allowance
@@ -170,7 +192,7 @@ function buildContextTable({
   return [
     `  <hp:p id="${paragraphId}" paraPrIDRef="3" styleIDRef="4" pageBreak="0" columnBreak="0" merged="0">`,
     '    <hp:run charPrIDRef="61">',
-    `      <hp:tbl id="${tableId}" zOrder="12" numberingType="TABLE" textWrap="TOP_AND_BOTTOM" textFlow="BOTH_SIDES" lock="0" dropcapstyle="None" pageBreak="NONE" repeatHeader="1" rowCnt="${normalizedEntries.length}" colCnt="1" cellSpacing="0" borderFillIDRef="7" noAdjust="0">`,
+    `      <hp:tbl id="${tableId}" zOrder="12" numberingType="TABLE" textWrap="TOP_AND_BOTTOM" textFlow="BOTH_SIDES" lock="0" dropcapstyle="None" pageBreak="NONE" repeatHeader="1" rowCnt="${entries.length}" colCnt="1" cellSpacing="0" borderFillIDRef="7" noAdjust="0">`,
     '        <hp:sz width="30611" widthRelTo="ABSOLUTE" height="' + tableHeight + '" heightRelTo="ABSOLUTE" protect="0" />',
     '        <hp:pos treatAsChar="1" affectLSpacing="0" flowWithText="1" allowOverlap="0" holdAnchorAndSO="0" vertRelTo="PARA" horzRelTo="PARA" vertAlign="TOP" horzAlign="LEFT" vertOffset="0" horzOffset="0" />',
     '        <hp:outMargin left="0" right="0" top="0" bottom="0" />',
@@ -186,6 +208,32 @@ function buildContextTable({
   ].join('\n');
 }
 
+function normalizeContextTableCell(value) {
+  if (value === undefined || value === null) {
+    return '';
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return String(value);
+}
+
+function normalizeContextTableHeader(header, index) {
+  if (header && typeof header === 'object') {
+    const labelSource = header.label ?? header.text ?? header.title ?? header.name ?? index;
+    const label = normalizeContextTableCell(labelSource);
+    const key = header.key ?? header.field ?? header.id ?? header.name ?? null;
+    return { label, key };
+  }
+
+  return {
+    label: normalizeContextTableCell(header ?? index),
+    key: null
+  };
+}
+
 function normalizeStatementEntry(statement) {
   if (statement && typeof statement === 'object') {
     return statement.text ?? statement.content ?? statement.description ?? '';
@@ -196,12 +244,18 @@ function normalizeStatementEntry(statement) {
 
 function normalizeStatementTitle(title) {
   if (!title) {
-    return '<보기>';
+    return DEFAULT_STATEMENT_TITLE;
   }
 
-  return String(title)
+  let normalized = String(title)
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>');
+
+  if (/^<\s*보기\s*>$/i.test(normalized) || /^<\s*보\s*기\s*>$/i.test(normalized)) {
+    normalized = DEFAULT_STATEMENT_TITLE;
+  }
+
+  return normalized;
 }
 
 function estimateStatementCellHeight(statements) {
@@ -644,16 +698,322 @@ function normalizeChoice(choice) {
 
 function normalizeContextEntry(entry) {
   if (entry && typeof entry === 'object') {
+    if (entry.type === 'table' || entry.table || Array.isArray(entry.rows) || Array.isArray(entry.headers)) {
+      const tableSource = entry.table && typeof entry.table === 'object' ? entry.table : entry;
+      const headerDefinitions = Array.isArray(tableSource.headers)
+        ? tableSource.headers.map((header, index) => normalizeContextTableHeader(header, index))
+        : null;
+
+      const headerLabels = headerDefinitions ? headerDefinitions.map((header) => header.label) : null;
+      const headerKeys = headerDefinitions ? headerDefinitions.map((header) => header.key) : null;
+
+      const rawRows = Array.isArray(tableSource.rows) ? tableSource.rows : [];
+      const normalizedRowArrays = rawRows.map((row) => {
+        if (Array.isArray(row)) {
+          return row.map(normalizeContextTableCell);
+        }
+
+        if (row && typeof row === 'object') {
+          if (headerKeys && headerKeys.some((key) => key !== null)) {
+            return headerKeys.map((key, idx) => {
+              if (key) {
+                return normalizeContextTableCell(row[key]);
+              }
+
+              const headerLabel = headerLabels ? headerLabels[idx] : null;
+              if (headerLabel && Object.prototype.hasOwnProperty.call(row, headerLabel)) {
+                return normalizeContextTableCell(row[headerLabel]);
+              }
+
+              return '';
+            });
+          }
+
+          return Object.values(row).map(normalizeContextTableCell);
+        }
+
+        return [normalizeContextTableCell(row)];
+      });
+
+      let columnCount = headerLabels && headerLabels.length > 0
+        ? headerLabels.length
+        : normalizedRowArrays.reduce((max, row) => Math.max(max, row.length), 0);
+
+      if (columnCount === 0 && normalizedRowArrays.length > 0) {
+        columnCount = normalizedRowArrays[0]?.length ?? 0;
+      }
+
+      const rows = normalizedRowArrays.map((row) => {
+        const trimmed = row.slice(0, columnCount);
+        while (trimmed.length < columnCount) {
+          trimmed.push('');
+        }
+        return trimmed;
+      });
+
+      return {
+        type: 'table',
+        label: entry.label ?? entry.title ?? entry.name ?? null,
+        headers: headerLabels && headerLabels.length > 0 ? headerLabels : null,
+        rows,
+        columnCount
+      };
+    }
+
     return {
+      type: 'text',
       label: entry.label ?? entry.title ?? entry.name ?? null,
       text: entry.text ?? entry.content ?? entry.description ?? ''
     };
   }
 
   return {
+    type: 'text',
     label: null,
     text: entry === undefined || entry === null ? '' : String(entry)
   };
+}
+
+function estimateDataTableRowHeight(cells) {
+  if (!Array.isArray(cells) || cells.length === 0) {
+    return 4300;
+  }
+
+  const maxCellHeight = cells.reduce((max, cell) => {
+    const height = estimateContextRowHeight(cell);
+    return Math.max(max, height);
+  }, 0);
+
+  return maxCellHeight + 1700;
+}
+
+function buildContextDataTable({
+  entry,
+  paragraphId,
+  tableId,
+  paragraphIdFactory
+}) {
+  const columnCount = entry.columnCount ?? (entry.headers ? entry.headers.length : 0);
+  const hasHeaders = Array.isArray(entry.headers) && entry.headers.length > 0;
+
+  if (!columnCount || columnCount <= 0 || (!hasHeaders && entry.rows.length === 0)) {
+    return '';
+  }
+
+  const totalWidth = 30611;
+  const baseWidth = Math.floor(totalWidth / columnCount);
+  const columnWidths = Array.from({ length: columnCount }, () => baseWidth);
+  columnWidths[columnCount - 1] += totalWidth - baseWidth * columnCount;
+
+  const rowHeights = [];
+  const tableRows = [];
+
+  if (hasHeaders) {
+    const headerHeight = estimateDataTableRowHeight(entry.headers);
+    rowHeights.push(headerHeight);
+
+    const headerCells = entry.headers.map((headerText, colIndex) => {
+      const cellParagraphId = paragraphIdFactory();
+      const paragraph = buildParagraph({
+        id: cellParagraphId,
+        paraPrIDRef: '45',
+        styleIDRef: '0',
+        charPrIDRef: '54',
+        text: headerText,
+        lineSegOptions: {
+          spacing: 516,
+          horzsize: Math.max(1800, columnWidths[colIndex] - 1500),
+          flags: '1441792'
+        },
+        indent: '              '
+      });
+
+      return [
+        '          <hp:tc name="" header="0" hasMargin="1" protect="0" editable="0" dirty="0" borderFillIDRef="6">',
+        '            <hp:subList id="" textDirection="HORIZONTAL" lineWrap="BREAK" vertAlign="CENTER" linkListIDRef="0" linkListNextIDRef="0" textWidth="0" textHeight="0" hasTextRef="0" hasNumRef="0">',
+        paragraph,
+        '            </hp:subList>',
+        `            <hp:cellAddr colAddr="${colIndex}" rowAddr="0" />`,
+        '            <hp:cellSpan colSpan="1" rowSpan="1" />',
+        `            <hp:cellSz width="${columnWidths[colIndex]}" height="${headerHeight}" />`,
+        '            <hp:cellMargin left="850" right="850" top="850" bottom="850" />',
+        '          </hp:tc>'
+      ].join('\n');
+    });
+
+    tableRows.push([
+      '        <hp:tr>',
+      headerCells.join('\n'),
+      '        </hp:tr>'
+    ].join('\n'));
+  }
+
+  entry.rows.forEach((row, rowIndex) => {
+    const rowHeight = estimateDataTableRowHeight(row);
+    rowHeights.push(rowHeight);
+    const rowAddress = rowIndex + (hasHeaders ? 1 : 0);
+
+    const cells = row.map((cellText, colIndex) => {
+      const cellParagraphId = paragraphIdFactory();
+      const paragraph = buildParagraph({
+        id: cellParagraphId,
+        paraPrIDRef: '60',
+        styleIDRef: '44',
+        charPrIDRef: '46',
+        text: cellText,
+        lineSegOptions: {
+          spacing: 516,
+          horzsize: Math.max(1800, columnWidths[colIndex] - 1500),
+          flags: '1441792'
+        },
+        indent: '              '
+      });
+
+      return [
+        '          <hp:tc name="" header="0" hasMargin="1" protect="0" editable="0" dirty="0" borderFillIDRef="6">',
+        '            <hp:subList id="" textDirection="HORIZONTAL" lineWrap="BREAK" vertAlign="CENTER" linkListIDRef="0" linkListNextIDRef="0" textWidth="0" textHeight="0" hasTextRef="0" hasNumRef="0">',
+        paragraph,
+        '            </hp:subList>',
+        `            <hp:cellAddr colAddr="${colIndex}" rowAddr="${rowAddress}" />`,
+        '            <hp:cellSpan colSpan="1" rowSpan="1" />',
+        `            <hp:cellSz width="${columnWidths[colIndex]}" height="${rowHeight}" />`,
+        '            <hp:cellMargin left="850" right="850" top="850" bottom="850" />',
+        '          </hp:tc>'
+      ].join('\n');
+    });
+
+    tableRows.push([
+      '        <hp:tr>',
+      cells.join('\n'),
+      '        </hp:tr>'
+    ].join('\n'));
+  });
+
+  if (tableRows.length === 0) {
+    return '';
+  }
+
+  const tableHeight = rowHeights.reduce((total, height) => total + height, 1700);
+  const lineseg = buildLinesegArray({
+    vertsize: tableHeight,
+    textheight: tableHeight,
+    baseline: Math.max(978, tableHeight - 360),
+    spacing: 460,
+    horzpos: 1130,
+    horzsize: 30558,
+    flags: '393216'
+  }, '    ');
+
+  const totalRows = tableRows.length;
+
+  return [
+    `  <hp:p id="${paragraphId}" paraPrIDRef="3" styleIDRef="4" pageBreak="0" columnBreak="0" merged="0">`,
+    '    <hp:run charPrIDRef="61">',
+    `      <hp:tbl id="${tableId}" zOrder="12" numberingType="TABLE" textWrap="TOP_AND_BOTTOM" textFlow="BOTH_SIDES" lock="0" dropcapstyle="None" pageBreak="NONE" repeatHeader="1" rowCnt="${totalRows}" colCnt="${columnCount}" cellSpacing="0" borderFillIDRef="7" noAdjust="0">`,
+    `        <hp:sz width="30611" widthRelTo="ABSOLUTE" height="${tableHeight}" heightRelTo="ABSOLUTE" protect="0" />`,
+    '        <hp:pos treatAsChar="1" affectLSpacing="0" flowWithText="1" allowOverlap="0" holdAnchorAndSO="0" vertRelTo="PARA" horzRelTo="PARA" vertAlign="TOP" horzAlign="LEFT" vertOffset="0" horzOffset="0" />',
+    '        <hp:outMargin left="0" right="0" top="0" bottom="0" />',
+    '        <hp:inMargin left="850" right="850" top="850" bottom="850" />',
+    tableRows.join('\n'),
+    '      </hp:tbl>',
+    '    </hp:run>',
+    '    <hp:run charPrIDRef="1">',
+    '      <hp:t />',
+    '    </hp:run>',
+    lineseg,
+    '  </hp:p>'
+  ].join('\n');
+}
+
+function buildContextDataTableBlocks({
+  entry,
+  paragraphIdFactory,
+  tableIdFactory
+}) {
+  const blocks = [];
+
+  if (entry.label) {
+    const labelParagraphId = paragraphIdFactory();
+    blocks.push(buildParagraph({
+      id: labelParagraphId,
+      paraPrIDRef: '60',
+      styleIDRef: '44',
+      charPrIDRef: '46',
+      text: entry.label,
+      lineSegOptions: {
+        spacing: 516,
+        horzsize: 28908,
+        flags: '1441792'
+      }
+    }));
+  }
+
+  const paragraphId = paragraphIdFactory();
+  const tableId = tableIdFactory();
+  const tableBlock = buildContextDataTable({
+    entry,
+    paragraphId,
+    tableId,
+    paragraphIdFactory
+  });
+
+  if (tableBlock) {
+    blocks.push(tableBlock);
+  }
+
+  return blocks;
+}
+
+function buildContextBlocks({
+  entries,
+  paragraphIdFactory,
+  tableIdFactory
+}) {
+  if (!entries || entries.length === 0) {
+    return [];
+  }
+
+  const normalizedEntries = entries.map(normalizeContextEntry);
+  const blocks = [];
+  let pendingTextEntries = [];
+
+  const flushTextEntries = () => {
+    if (pendingTextEntries.length === 0) {
+      return;
+    }
+
+    const paragraphId = paragraphIdFactory();
+    const tableId = tableIdFactory();
+    const textTable = buildContextTable({
+      paragraphId,
+      tableId,
+      entries: pendingTextEntries,
+      paragraphIdFactory
+    });
+
+    if (textTable) {
+      blocks.push(textTable);
+    }
+
+    pendingTextEntries = [];
+  };
+
+  normalizedEntries.forEach((entry) => {
+    if (entry.type === 'table') {
+      flushTextEntries();
+      blocks.push(...buildContextDataTableBlocks({
+        entry,
+        paragraphIdFactory,
+        tableIdFactory
+      }));
+    } else {
+      pendingTextEntries.push(entry);
+    }
+  });
+
+  flushTextEntries();
+
+  return blocks;
 }
 
 function estimateContextRowHeight(text) {
@@ -709,8 +1069,10 @@ function generateSectionXml({ questions, options = {} }) {
     throw new Error('"questions" must be a non-empty array.');
   }
 
-  const paragraphIdFactory = createIdGenerator(options.baseParagraphId);
-  const tableIdFactory = createIdGenerator(options.baseTableId ?? 1900000000);
+  const { minifyOutput = true, ...generatorOptions } = options;
+
+  const paragraphIdFactory = createIdGenerator(generatorOptions.baseParagraphId);
+  const tableIdFactory = createIdGenerator(generatorOptions.baseTableId ?? 1900000000);
 
   const blocks = [SECTION_OPEN];
 
@@ -729,14 +1091,12 @@ function generateSectionXml({ questions, options = {} }) {
     }
 
     if (question.contextEntries.length > 0) {
-      const paragraphId = paragraphIdFactory();
-      const tableId = tableIdFactory();
-      blocks.push(buildContextTable({
-        paragraphId,
-        tableId,
+      const contextBlocks = buildContextBlocks({
         entries: question.contextEntries,
-        paragraphIdFactory
-      }));
+        paragraphIdFactory,
+        tableIdFactory
+      });
+      blocks.push(...contextBlocks);
     }
 
     if (question.statementTitle || question.statements.length > 0) {
@@ -762,14 +1122,14 @@ function generateSectionXml({ questions, options = {} }) {
           paragraphId,
           tableId,
           choices: question.choices,
-          options,
+          options: generatorOptions,
           paragraphIdFactory
         }));
       } else {
         question.choices.forEach((choice, idx) => {
           const paragraphId = paragraphIdFactory();
           const choiceText = normalizeChoice(choice);
-          const choiceContent = formatChoiceText(choiceText, idx, options);
+          const choiceContent = formatChoiceText(choiceText, idx, generatorOptions);
           blocks.push(buildChoiceParagraph({ paragraphId, text: choiceContent }));
         });
       }
@@ -804,14 +1164,15 @@ function generateSectionXml({ questions, options = {} }) {
       }));
     }
 
-    const spacerCount = options.spacersPerQuestion ?? 1;
+    const spacerCount = generatorOptions.spacersPerQuestion ?? 1;
     for (let i = 0; i < spacerCount; i += 1) {
       blocks.push(buildSpacerParagraph(paragraphIdFactory()));
     }
   });
 
   blocks.push(SECTION_CLOSE);
-  return `${blocks.join('\n')}`;
+  const rawXml = `${blocks.join('\n')}`;
+  return minifyOutput ? minifyXml(rawXml, DEFAULT_MINIFY_OPTIONS) : rawXml;
 }
 
 export {
@@ -819,5 +1180,6 @@ export {
   escapeXml,
   createIdGenerator,
   buildLinesegArray,
-  DEFAULT_CHOICE_NUMERALS
+  DEFAULT_CHOICE_NUMERALS,
+  DEFAULT_MINIFY_OPTIONS
 };
