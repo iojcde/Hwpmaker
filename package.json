@@ -2,7 +2,7 @@
   "name": "Hwpmaker",
   "version": "1.0.0",
   "description": "",
-  "main": "src/hwpGenerator.js",
+  "main": "src/index.js",
   "type": "module",
   "scripts": {
     "test": "node --test",

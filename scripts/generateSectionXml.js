@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 import minifyXml from 'minify-xml';
 
-import { generateSectionXml, DEFAULT_MINIFY_OPTIONS } from '../src/hwpGenerator.js';
+import { generateSectionXml, DEFAULT_MINIFY_OPTIONS } from '../src/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
