@@ -1,1 +1,29 @@
-<?xml version="1.0" encoding="UTF-8" standalone="yes" ?><opf:package xmlns:ha="http://www.hancom.co.kr/hwpml/2011/app" xmlns:hp="http://www.hancom.co.kr/hwpml/2011/paragraph" xmlns:hp10="http://www.hancom.co.kr/hwpml/2016/paragraph" xmlns:hs="http://www.hancom.co.kr/hwpml/2011/section" xmlns:hc="http://www.hancom.co.kr/hwpml/2011/core" xmlns:hh="http://www.hancom.co.kr/hwpml/2011/head" xmlns:hhs="http://www.hancom.co.kr/hwpml/2011/history" xmlns:hm="http://www.hancom.co.kr/hwpml/2011/master-page" xmlns:hpf="http://www.hancom.co.kr/schema/2011/hpf" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf/" xmlns:ooxmlchart="http://www.hancom.co.kr/hwpml/2016/ooxmlchart" xmlns:hwpunitchar="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar" xmlns:epub="http://www.idpf.org/2007/ops" xmlns:config="urn:oasis:names:tc:opendocument:xmlns:config:1.0" version="" unique-identifier="" id=""><opf:metadata><opf:title>평가원 사탐 양식</opf:title><opf:language>ko</opf:language><opf:meta name="creator" content="text">모킹버드</opf:meta><opf:meta name="subject" content="text"/><opf:meta name="description" content="text"/><opf:meta name="lastsaveby" content="text">jcde0</opf:meta><opf:meta name="CreatedDate" content="text">2004-11-09T06:23:46Z</opf:meta><opf:meta name="ModifiedDate" content="text">2025-09-25T03:34:01Z</opf:meta><opf:meta name="date" content="text">2025년 8월 18일 월요일 오후 2:52:09</opf:meta><opf:meta name="keyword" content="text"/></opf:metadata><opf:manifest><opf:item id="header" href="Contents/header.xml" media-type="application/xml"/><opf:item id="masterpage0" href="Contents/masterpage0.xml" media-type="application/xml"/><opf:item id="masterpage1" href="Contents/masterpage1.xml" media-type="application/xml"/><opf:item id="masterpage2" href="Contents/masterpage2.xml" media-type="application/xml"/><opf:item id="image1" href="BinData/image1.SVG" media-type="image/svg" isEmbeded="1" hashkey="s2VF1zk1DlXmCvwx18VXmQ=="/><opf:item id="masterpage3" href="Contents/masterpage3.xml" media-type="application/xml"/><opf:item id="section0" href="Contents/section0.xml" media-type="application/xml"/><opf:item id="settings" href="settings.xml" media-type="application/xml"/></opf:manifest><opf:spine><opf:itemref idref="header" linear="yes"/><opf:itemref idref="section0" linear="yes"/></opf:spine></opf:package>
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<opf:package xmlns:ha="http://www.hancom.co.kr/hwpml/2011/app" xmlns:hp="http://www.hancom.co.kr/hwpml/2011/paragraph" xmlns:hp10="http://www.hancom.co.kr/hwpml/2016/paragraph" xmlns:hs="http://www.hancom.co.kr/hwpml/2011/section" xmlns:hc="http://www.hancom.co.kr/hwpml/2011/core" xmlns:hh="http://www.hancom.co.kr/hwpml/2011/head" xmlns:hhs="http://www.hancom.co.kr/hwpml/2011/history" xmlns:hm="http://www.hancom.co.kr/hwpml/2011/master-page" xmlns:hpf="http://www.hancom.co.kr/schema/2011/hpf" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf/" xmlns:ooxmlchart="http://www.hancom.co.kr/hwpml/2016/ooxmlchart" xmlns:hwpunitchar="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar" xmlns:epub="http://www.idpf.org/2007/ops" xmlns:config="urn:oasis:names:tc:opendocument:xmlns:config:1.0" version="" unique-identifier="" id="">
+  <opf:metadata>
+    <opf:title>평가원 사탐 양식</opf:title>
+    <opf:language>ko</opf:language>
+    <opf:meta name="creator" content="text">모킹버드</opf:meta>
+    <opf:meta name="subject" content="text" />
+    <opf:meta name="description" content="text" />
+    <opf:meta name="lastsaveby" content="text">jcde0</opf:meta>
+    <opf:meta name="CreatedDate" content="text">2004-11-09T06:23:46Z</opf:meta>
+    <opf:meta name="ModifiedDate" content="text">2025-09-26T02:23:16Z</opf:meta>
+    <opf:meta name="date" content="text">2025년 8월 18일 월요일 오후 2:52:09</opf:meta>
+    <opf:meta name="keyword" content="text" />
+  </opf:metadata>
+  <opf:manifest>
+    <opf:item id="header" href="Contents/header.xml" media-type="application/xml" />
+    <opf:item id="masterpage0" href="Contents/masterpage0.xml" media-type="application/xml" />
+    <opf:item id="masterpage1" href="Contents/masterpage1.xml" media-type="application/xml" />
+    <opf:item id="masterpage2" href="Contents/masterpage2.xml" media-type="application/xml" />
+    <opf:item id="image1" href="BinData/image1.SVG" media-type="image/svg" isEmbeded="1" hashkey="s2VF1zk1DlXmCvwx18VXmQ==" />
+    <opf:item id="masterpage3" href="Contents/masterpage3.xml" media-type="application/xml" />
+    <opf:item id="section0" href="Contents/section0.xml" media-type="application/xml" />
+    <opf:item id="settings" href="settings.xml" media-type="application/xml" />
+  </opf:manifest>
+  <opf:spine>
+    <opf:itemref idref="header" linear="yes" />
+    <opf:itemref idref="section0" linear="yes" />
+  </opf:spine>
+</opf:package>

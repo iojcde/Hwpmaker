@@ -46,8 +46,12 @@ test('generateSectionXml creates XML for a single question', () => {
   assert.ok(xml.startsWith('<?xml'), 'includes xml declaration');
   assert.ok(xml.includes('<hs:sec'), 'includes section root');
   assert.ok(xml.includes('다음 사례에 나타난 직업 가치관에 대한 설명으로 옳은 것은?'));
+  assert.match(xml, /paraPrIDRef="55" styleIDRef="1"/);
   assert.match(xml, /<hp:tbl[^>]+rowCnt="2"[^>]+borderFillIDRef="7"/);
-  assert.match(xml, /<hp:tbl[^>]+rowCnt="3"[^>]+colCnt="3"[^>]+borderFillIDRef="22"/);
+  assert.match(xml, /<hp:tbl[^>]+rowCnt="3"[^>]+colCnt="3"[^>]+borderFillIDRef="5"/);
+  assert.match(xml, /<hp:tc[^>]+borderFillIDRef="9"[\s\S]+?&lt;보\s*기&gt;/);
+  assert.match(xml, /<hp:tc[^>]+borderFillIDRef="12"[\s\S]+?<hp:cellAddr colAddr="0" rowAddr="2"/);
+  assert.match(xml, /charPrIDRef="62"/);
   assert.match(xml, /colCnt="10"/);
   assert.ok(xml.includes('<hp:cellSz width="30611"'));
   assert.ok(xml.includes('&lt;보 기&gt;'));
@@ -105,7 +109,8 @@ test('generateSectionXml supports context tables', () => {
                 { item: 'B', value: '20' }
               ]
             }
-          }
+          },
+          { label: '해설', text: '표를 참고하여 공통점을 찾으시오.' }
         ],
         choices: ['선택지 1', '선택지 2', '선택지 3']
       }
@@ -116,5 +121,50 @@ test('generateSectionXml supports context tables', () => {
   assert.ok(xml.includes('자료 1'));
   assert.ok(xml.includes('항목'));
   assert.ok(xml.includes('20'));
-  assert.match(xml, /<hp:tbl[^>]+rowCnt="3"[^>]+colCnt="2"[^>]+borderFillIDRef="7"/);
+  assert.ok(xml.includes('해설 : 표를 참고하여 공통점을 찾으시오.'));
+
+  // Outer context container with single column rows
+  assert.match(xml, /<hp:tbl[^>]+rowCnt="3"[^>]+colCnt="1"[^>]+borderFillIDRef="7"/);
+
+  // Nested table exists inside the context container
+  assert.match(xml, /<hp:tbl[^>]+colCnt="1"[^>]+borderFillIDRef="7"[\s\S]*?<hp:tbl[^>]+colCnt="2"[^>]+borderFillIDRef="3"/);
+  assert.match(xml, /charPrIDRef="63"/);
+
+  // Nested table sits inside a paragraph with minimal padding similar to section0.xml
+  assert.match(
+    xml,
+    /<hp:subList[^>]*>\s*<hp:p[^>]+paraPrIDRef="44"[^>]+styleIDRef="0"[\s\S]*?<hp:run charPrIDRef="53">[\s\S]*?<hp:tbl[^>]+borderFillIDRef="3"/
+  );
+  assert.doesNotMatch(
+    xml,
+    /<hp:p[^>]+paraPrIDRef="44"[^>]+styleIDRef="0"[\s\S]*?<hp:run charPrIDRef="1">[\s\S]*?<hp:tbl/
+  );
+
+  // Nested table margins: top margin always 566, bottom margin present because more entries follow
+  assert.match(xml, /<hp:outMargin left="0" right="0" top="566" bottom="566"/);
+});
+
+test('context data table omits bottom margin when last entry', () => {
+  const xml = generateSectionXml({
+    questions: [
+      {
+        prompt: '마지막 표 확인',
+        contextEntries: [
+          {
+            label: '자료 2',
+            table: {
+              headers: ['구분', '값'],
+              rows: [
+                ['X', '1'],
+                ['Y', '2']
+              ]
+            }
+          }
+        ],
+        choices: ['가', '나']
+      }
+    ]
+  });
+
+  assert.match(xml, /<hp:outMargin left="0" right="0" top="566" bottom="0"/);
 });
