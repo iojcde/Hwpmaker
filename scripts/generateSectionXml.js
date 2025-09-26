@@ -20,11 +20,11 @@ const SAMPLE_PAYLOAD = {
       prompt: '샘플 문제: 다음 중 XML 생성 스크립트의 장점을 모두 고르시오.',
       contextEntries: [
         {
-          label: '정보',
+          label: '',
           text: '스크립트는 JSON 파일을 읽어 HWP XML을 생성합니다.'
         },
         {
-          label: '자료 표',
+          label: '',
           table: {
             headers: ['연도', '매출'],
             rows: [
@@ -49,6 +49,39 @@ const SAMPLE_PAYLOAD = {
       ],
       answer: '⑤',
       explanation: '스크립트는 반복 작업을 자동화하고 확장하기 쉽습니다.'
+    }, {
+      prompt: '하하하 호호호',
+      contextEntries: [
+        {
+          label: '',
+          text: '여기는 description'
+        },
+        {
+          label: '',
+          table: {
+            headers: ['연도', '매출'],
+            rows: [
+              ['2023', '120'],
+              ['2024', '180']
+            ]
+          }
+        }
+      ],
+      statementTitle: '<보 기>',
+      statements: [
+        '하하하.',
+        '여러 문제를 한 번에 생성하도록 확장할 수 있다.'
+      ],
+      choiceLayout: 'table',
+      choices: [
+        'ㄱ',
+        'ㄴ',
+        'ㄷ',
+        'ㄱ, ㄴ',
+        'ㄱ, ㄴ, ㄷ'
+      ],
+      answer: '⑤',
+      explanation: '스크립트는 반복 작업을 자동화하고 확장하기 안 쉽습니다.'
     }
   ]
 };

@@ -30,7 +30,7 @@ const xml = generateSectionXml({
         { label: 'A 씨', text: '가업을 계승하며 복리 후생을 중시한다.' },
         { label: 'B 씨', text: '새로운 경험을 즐기며 상품 기획 전문가가 되었다.' }
       ],
-      statementTitle: '&lt;보기&gt;',
+      statementTitle: '&lt;보 기&gt;',
       statements: [
         'A 씨는 귀속주의적 직업관을 가진다.',
         'B 씨는 변화 지향 가치를 중시한다.',

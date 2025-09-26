@@ -19,7 +19,9 @@ test('generateSectionXml script prints XML to stdout when requested', () => {
   assert.match(result.stdout, /<hs:sec/);
   assert.match(result.stdout, /샘플 문제/);
   assert.match(result.stdout, /<hp:tbl[^>]+borderFillIDRef="7"/);
-  assert.match(result.stdout, /<hp:tbl[^>]+borderFillIDRef="22"/);
+  assert.match(result.stdout, /<hp:tbl[^>]+borderFillIDRef="5"/);
+  assert.match(result.stdout, /<hp:tc[^>]+borderFillIDRef="22"/);
+  assert.match(result.stdout, /paraPrIDRef="55"/);
   assert.match(result.stdout, /colCnt="10"/);
 });
 
@@ -32,13 +34,15 @@ test('generateSectionXml script writes XML file when output is provided', () => 
   });
 
   assert.equal(result.status, 0, result.stderr);
-  assert.ok(result.stdout.includes('Generated 1 question'));
+  assert.match(result.stdout, /Generated \d+ question\(s\)/);
 
   const xml = readFileSync(outputPath, 'utf8');
   assert.match(xml, /^<\?xml/);
   assert.match(xml, /<hs:sec/);
   assert.match(xml, /<hp:tbl[^>]+borderFillIDRef="7"/);
-  assert.match(xml, /<hp:tbl[^>]+borderFillIDRef="22"/);
+  assert.match(xml, /<hp:tbl[^>]+borderFillIDRef="5"/);
+  assert.match(xml, /<hp:tc[^>]+borderFillIDRef="22"/);
+  assert.match(xml, /paraPrIDRef="55"/);
   assert.match(xml, /colCnt="10"/);
 
   rmSync(tempDir, { recursive: true, force: true });
