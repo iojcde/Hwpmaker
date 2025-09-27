@@ -1,15 +1,14 @@
 import { buildParagraph, buildLinesegArray } from './paragraph.js';
-import { escapeXml } from './utils.js';
 
 const CONTEXT_TABLE_WIDTH = 30611;
 const CONTEXT_OUTER_BORDER_ID = '7';
 const CONTEXT_CELL_BORDER_ID = '6';
-const CONTEXT_CELL_MARGIN = 212;
-const NESTED_TABLE_OUT_MARGIN_TOP = 170;
-const NESTED_TABLE_OUT_MARGIN_BOTTOM = 170;
+const CONTEXT_CELL_MARGIN = 850;
+const NESTED_TABLE_OUT_MARGIN_TOP = 566;
+const NESTED_TABLE_OUT_MARGIN_BOTTOM = 566;
 const NESTED_IN_MARGIN = {
-  left: 170,
-  right: 170,
+  left: 510,
+  right: 510,
   top: 141,
   bottom: 141
 };
@@ -17,24 +16,40 @@ const NESTED_PARAGRAPH_PARA_PR_ID = '44';
 const NESTED_PARAGRAPH_STYLE_ID = '0';
 const NESTED_PARAGRAPH_CHAR_PR_ID = '53';
 const NESTED_TABLE_LINESEG_HORZSIZE = CONTEXT_TABLE_WIDTH - (CONTEXT_CELL_MARGIN * 2) - 3;
+const CONTEXT_ROW_EXTRA_PADDING = 566;
 
-function estimateContextRowHeight(text) {
+function countVisualLines(text, { charsPerLine = 28 } = {}) {
   if (!text) {
-    return 2600;
+    return 1;
   }
 
-  const normalized = String(text)
+  const segments = String(text)
     .replace(/\r\n/g, '\n')
     .split('\n')
-    .reduce((count, line) => {
-      const trimmed = line.trim();
-      const segments = Math.max(1, Math.ceil(trimmed.length / 28));
-      return count + segments;
+    .reduce((count, rawLine) => {
+      const trimmed = rawLine.trim();
+      if (trimmed.length === 0) {
+        return count + 1;
+      }
+
+      const estimatedSegments = Math.max(1, Math.ceil(trimmed.length / charsPerLine));
+      return count + estimatedSegments;
     }, 0);
 
-  const totalLines = Math.max(1, normalized);
-  const lineHeight = 1970;
-  return Math.max(2600, totalLines * lineHeight);
+  return Math.max(1, segments);
+}
+
+function estimateContextRowHeight(text) {
+  const totalLines = countVisualLines(text, { charsPerLine: 32 });
+  const lineHeight = 1150;
+  const lineSpacing = 460;
+  const basePadding = 566;
+
+  const contentHeight = totalLines * lineHeight;
+  const spacingHeight = Math.max(0, totalLines - 1) * lineSpacing;
+  const computed = basePadding + contentHeight + spacingHeight;
+
+  return Math.max(2000, computed);
 }
 
 function normalizeContextTableCell(value) {
@@ -208,15 +223,24 @@ function mergeContextEntries(entries) {
 
 function estimateDataTableRowHeight(cells) {
   if (!Array.isArray(cells) || cells.length === 0) {
-    return 4300;
+    return 1904;
   }
 
-  const maxCellHeight = cells.reduce((max, cell) => {
-    const height = estimateContextRowHeight(cell);
-    return Math.max(max, height);
-  }, 0);
+  const charsPerLine = 24;
+  const lineHeight = 950;
+  const lineSpacing = 380;
+  const verticalPadding = 472;
+  const minHeight = 1904;
 
-  return maxCellHeight + 1700;
+  const maxCellHeight = cells.reduce((max, cell) => {
+    const totalLines = countVisualLines(cell, { charsPerLine });
+    const contentHeight = totalLines * lineHeight;
+    const spacingHeight = Math.max(0, totalLines - 1) * lineSpacing;
+    const computed = verticalPadding + contentHeight + spacingHeight;
+    return Math.max(max, Math.max(minHeight, computed));
+  }, minHeight);
+
+  return maxCellHeight;
 }
 
 function buildContextDataTable({
@@ -232,10 +256,76 @@ function buildContextDataTable({
     return { block: '', height: 0 };
   }
 
-  const totalWidth = CONTEXT_TABLE_WIDTH;
-  const baseWidth = Math.floor(totalWidth / columnCount);
-  const columnWidths = Array.from({ length: columnCount }, () => baseWidth);
-  columnWidths[columnCount - 1] += totalWidth - baseWidth * columnCount;
+  const availableWidth = CONTEXT_TABLE_WIDTH - (CONTEXT_CELL_MARGIN * 2);
+
+  const measureTextWeight = (text) => {
+    const normalized = normalizeContextTableCell(text);
+    if (!normalized) {
+      return 1;
+    }
+
+    const lines = normalized.replace(/\r\n/g, '\n').split('\n');
+    let maxLength = 1;
+    lines.forEach((line) => {
+      const length = line.trim().length;
+      if (length > 0) {
+        maxLength = Math.max(maxLength, length);
+      } else {
+        maxLength = Math.max(maxLength, 1);
+      }
+    });
+
+    return Math.max(maxLength, lines.length * 4);
+  };
+
+  const columnWeights = Array.from({ length: columnCount }, (_, columnIndex) => {
+    const headerWeight = hasHeaders ? measureTextWeight(entry.headers[columnIndex]) : 1;
+    const rowWeight = entry.rows.reduce((max, row) => {
+      const cell = row[columnIndex] ?? '';
+      return Math.max(max, measureTextWeight(cell));
+    }, 1);
+
+    return Math.max(1, headerWeight, rowWeight);
+  });
+
+  const totalWeight = columnWeights.reduce((sum, weight) => sum + weight, 0) || columnCount;
+  const minimumWidth = Math.max(1200, Math.floor(availableWidth / (columnCount * 2)));
+
+  const columnWidths = columnWeights.map((weight) => {
+    const proportionalWidth = Math.floor((weight / totalWeight) * availableWidth);
+    return Math.max(minimumWidth, proportionalWidth);
+  });
+
+  let widthSum = columnWidths.reduce((sum, width) => sum + width, 0);
+  let widthDelta = availableWidth - widthSum;
+
+  if (widthDelta !== 0 && columnWidths.length > 0) {
+    if (widthDelta > 0) {
+      columnWidths[columnWidths.length - 1] += widthDelta;
+    } else {
+      let remaining = widthDelta;
+      for (let index = columnWidths.length - 1; index >= 0 && remaining < 0; index -= 1) {
+        const currentWidth = columnWidths[index];
+        const adjustable = currentWidth - minimumWidth;
+        if (adjustable <= 0) {
+          continue;
+        }
+
+        const adjustment = Math.max(remaining, -adjustable);
+        columnWidths[index] = currentWidth + adjustment;
+        remaining -= adjustment;
+      }
+
+      if (remaining !== 0) {
+        columnWidths[columnWidths.length - 1] = Math.max(minimumWidth, columnWidths[columnWidths.length - 1] + remaining);
+      }
+    }
+
+    widthSum = columnWidths.reduce((sum, width) => sum + width, 0);
+    if (widthSum !== availableWidth) {
+      columnWidths[columnWidths.length - 1] += availableWidth - widthSum;
+    }
+  }
 
   const rowHeights = [];
   const tableRows = [];
@@ -246,6 +336,7 @@ function buildContextDataTable({
 
     const headerCells = entry.headers.map((headerText, colIndex) => {
       const cellParagraphId = paragraphIdFactory();
+      const usableWidth = Math.max(1200, columnWidths[colIndex] - (NESTED_IN_MARGIN.left + NESTED_IN_MARGIN.right));
       const paragraph = buildParagraph({
         id: cellParagraphId,
         paraPrIDRef: '62',
@@ -255,7 +346,7 @@ function buildContextDataTable({
         lineSegOptions: {
           baseline: 808,
           spacing: 188,
-          horzsize: Math.max(1800, columnWidths[colIndex] - 1500),
+          horzsize: Math.max(1200, usableWidth),
           flags: '393216'
         },
         indent: '              '
@@ -288,6 +379,7 @@ function buildContextDataTable({
 
     const cells = row.map((cellText, colIndex) => {
       const cellParagraphId = paragraphIdFactory();
+      const usableWidth = Math.max(1200, columnWidths[colIndex] - (NESTED_IN_MARGIN.left + NESTED_IN_MARGIN.right));
       const paragraph = buildParagraph({
         id: cellParagraphId,
         paraPrIDRef: '44',
@@ -297,7 +389,7 @@ function buildContextDataTable({
         lineSegOptions: {
           baseline: 808,
           spacing: 380,
-          horzsize: Math.max(1800, columnWidths[colIndex] - 1500),
+          horzsize: Math.max(1200, usableWidth),
           flags: '393216'
         },
         indent: '              '
@@ -372,7 +464,7 @@ function buildContextRow({
       indent: '              '
     });
     cellBlocks.push(paragraph);
-    rowHeight += estimateContextRowHeight(displayText) + 1700;
+  rowHeight += estimateContextRowHeight(displayText) + CONTEXT_ROW_EXTRA_PADDING;
   } else if (entry.type === 'table') {
     const descriptionText = entry.displayText ?? formatDisplayText(entry);
 
@@ -383,44 +475,53 @@ function buildContextRow({
       hasFollowingEntry
     });
 
-    const escapedDescription = descriptionText ? escapeXml(descriptionText) : '';
-    const paragraphId = paragraphIdFactory();
-    const linesegHeightBase = descriptionText ? estimateContextRowHeight(descriptionText) + 1700 : 1700;
-    rowHeight += linesegHeightBase;
+    const descriptionHeight = descriptionText ? estimateContextRowHeight(descriptionText) : 0;
 
-    if (tableBlock.height) {
-      rowHeight += tableBlock.height;
+    if (descriptionText) {
+      const descriptionParagraphId = paragraphIdFactory();
+      const descriptionParagraph = buildParagraph({
+        id: descriptionParagraphId,
+        paraPrIDRef: '44',
+        styleIDRef: '0',
+        charPrIDRef: NESTED_PARAGRAPH_CHAR_PR_ID,
+        text: descriptionText,
+        lineSegOptions: {
+          spacing: 460,
+          horzsize: 28908,
+          flags: '393216'
+        },
+        indent: '              '
+      });
+      cellBlocks.push(descriptionParagraph);
+      rowHeight += descriptionHeight;
     }
 
-    const lineseg = buildLinesegArray({
-      vertsize: rowHeight,
-      textheight: rowHeight,
-      baseline: Math.max(978, rowHeight - 360),
-      spacing: 460,
-      horzpos: 0,
-      horzsize: 28908,
-      flags: '393216'
-    }, '                ');
-
-    const runContent = [];
-    if (escapedDescription) {
-      runContent.push(`                  <hp:t>${escapedDescription}</hp:t>`);
-    }
+    const tableParagraphHeight = CONTEXT_ROW_EXTRA_PADDING + (tableBlock.height || 0);
 
     if (tableBlock.block) {
-      runContent.push(tableBlock.block);
+      const tableParagraphId = paragraphIdFactory();
+      const tableLineseg = buildLinesegArray({
+        vertsize: tableParagraphHeight,
+        textheight: tableParagraphHeight,
+        baseline: Math.max(978, tableParagraphHeight - 360),
+        spacing: 460,
+        horzpos: 0,
+        horzsize: 28908,
+        flags: '393216'
+      }, '                ');
+
+      cellBlocks.push([
+        `              <hp:p id="${tableParagraphId}" paraPrIDRef="${NESTED_PARAGRAPH_PARA_PR_ID}" styleIDRef="${NESTED_PARAGRAPH_STYLE_ID}" pageBreak="0" columnBreak="0" merged="0">`,
+        `                <hp:run charPrIDRef="${NESTED_PARAGRAPH_CHAR_PR_ID}">`,
+        tableBlock.block,
+        '                  <hp:t />',
+        '                </hp:run>',
+        tableLineseg,
+        '              </hp:p>'
+      ].join('\n'));
     }
 
-    runContent.push('                  <hp:t />');
-
-    cellBlocks.push([
-      `              <hp:p id="${paragraphId}" paraPrIDRef="${NESTED_PARAGRAPH_PARA_PR_ID}" styleIDRef="${NESTED_PARAGRAPH_STYLE_ID}" pageBreak="0" columnBreak="0" merged="0">`,
-      `                <hp:run charPrIDRef="${NESTED_PARAGRAPH_CHAR_PR_ID}">`,
-      runContent.join('\n'),
-      '                </hp:run>',
-      lineseg,
-      '              </hp:p>'
-    ].join('\n'));
+    rowHeight += tableParagraphHeight;
   }
 
   if (cellBlocks.length === 0) {

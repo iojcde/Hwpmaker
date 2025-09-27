@@ -123,12 +123,18 @@ test('generateSectionXml supports context tables', () => {
   assert.ok(xml.includes('20'));
   assert.ok(xml.includes('해설 : 표를 참고하여 공통점을 찾으시오.'));
 
-  // Outer context container with single column rows
-  assert.match(xml, /<hp:tbl[^>]+rowCnt="3"[^>]+colCnt="1"[^>]+borderFillIDRef="7"/);
+  // Outer context container with single column rows (text merged with table entry)
+  assert.match(xml, /<hp:tbl[^>]+rowCnt="2"[^>]+colCnt="1"[^>]+borderFillIDRef="7"/);
 
   // Nested table exists inside the context container
   assert.match(xml, /<hp:tbl[^>]+colCnt="1"[^>]+borderFillIDRef="7"[\s\S]*?<hp:tbl[^>]+colCnt="2"[^>]+borderFillIDRef="3"/);
   assert.match(xml, /charPrIDRef="63"/);
+
+  // Table entry renders text and nested table in separate paragraphs, matching section0.xml structure
+  assert.match(
+    xml,
+    /<hp:tc[^>]+borderFillIDRef="6"[\s\S]*?<hp:p[^>]+paraPrIDRef="44"[^>]+styleIDRef="0"[\s\S]*?제공된 자료를 분석하고 결론을 도출하시오\.[\s\S]*?<\/hp:p>\s*<hp:p[^>]+paraPrIDRef="44"[^>]+styleIDRef="0"[\s\S]*?<hp:tbl[^>]+borderFillIDRef="3"/
+  );
 
   // Nested table sits inside a paragraph with minimal padding similar to section0.xml
   assert.match(
