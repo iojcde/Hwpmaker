@@ -24,7 +24,7 @@ const minifyOptions = {
     removeUnnecessaryStandaloneDeclaration: true,
     removeUnusedNamespaces: true,
     removeUnusedDefaultNamespace: true,
-    shortenNamespaces: true,
+    shortenNamespaces: false,
     ignoreCData: true
 };
 
