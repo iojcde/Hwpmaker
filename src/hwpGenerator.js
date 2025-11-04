@@ -2,6 +2,7 @@ const DEFAULT_BASE_PARAGRAPH_ID = 2147483649;
 const DEFAULT_BASE_TABLE_ID = 1900000001;
 
 export const DEFAULT_CHOICE_NUMERALS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
+export const KOREAN_CHOICE_LABELS = ['ㄱ.', 'ㄴ.', 'ㄷ.', 'ㄹ.', 'ㅁ.', 'ㅂ.', 'ㅅ.', 'ㅇ.', 'ㅈ.', 'ㅊ.', 'ㅋ.', 'ㅌ.', 'ㅍ.', 'ㅎ.'];
 
 export const DEFAULT_MINIFY_OPTIONS = {
 	removeComments: true,
@@ -584,6 +585,26 @@ ${renderLinesegArray({ width: '30588', height: '10438', baseline: '8872' })}
 	</hp:p>`;
 }
 
+function hasKoreanLetters(text) {
+	return /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(text);
+}
+
+function generateChoiceNumeral(choice, index, choiceNumerals) {
+	// If the choice is exactly a single Korean consonant, use Korean labels
+	if (/^[ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ]$/.test(choice.trim())) {
+		const koreanIndex = 'ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ'.indexOf(choice.trim());
+		return KOREAN_CHOICE_LABELS[koreanIndex] || `${index + 1}.`;
+	}
+	
+	// If there's an explicit numeral provided, use it
+	if (choiceNumerals && choiceNumerals[index]) {
+		return choiceNumerals[index];
+	}
+	
+	// Default fallback to numbered labels
+	return `${index + 1}.`;
+}
+
 function chunkChoices(choices, size) {
 	const result = [];
 	for (let i = 0; i < choices.length; i += size) {
@@ -631,7 +652,8 @@ function renderChoiceTable({ choices, choiceNumerals, nextParagraphId, nextTable
 	const tableId = nextTableId();
 	const rows = chunks.map((chunk, rowIndex) => {
 		const cells = chunk.map((choice, index) => {
-			const numeral = choiceNumerals[rowIndex * 5 + index] ?? `${rowIndex * 5 + index + 1}.`;
+			const globalIndex = rowIndex * 5 + index;
+			const numeral = generateChoiceNumeral(choice, globalIndex, choiceNumerals);
 			return renderChoiceTableCells({ numeral, text: choice, nextParagraphId, columnOffset: index * 2, rowIndex });
 		});
 
@@ -679,7 +701,7 @@ ${cells.join('\n')}
 	return `  <hp:p id="${paragraphId}" paraPrIDRef="60" styleIDRef="10" pageBreak="0" columnBreak="0" merged="0">
 		<hp:run charPrIDRef="0">
 			<hp:tbl id="${tableId}" zOrder="20" numberingType="TABLE" textWrap="TOP_AND_BOTTOM" textFlow="BOTH_SIDES" lock="0" dropcapstyle="None" pageBreak="NONE" repeatHeader="1" rowCnt="${totalRows}" colCnt="10" cellSpacing="0" borderFillIDRef="5" noAdjust="0">
-				<hp:sz width="30615" widthRelTo="ABSOLUTE" height="${totalRows * 1431}" heightRelTo="ABSOLUTE" protect="1" />
+				<hp:sz width="30615" widthRelTo="ABSOLUTE" protect="1" />
 				<hp:pos treatAsChar="1" affectLSpacing="0" flowWithText="1" allowOverlap="0" holdAnchorAndSO="0" vertRelTo="PARA" horzRelTo="PARA" vertAlign="TOP" horzAlign="LEFT" vertOffset="0" horzOffset="0" />
 				<hp:outMargin left="0" right="0" top="0" bottom="0" />
 				<hp:inMargin left="0" right="0" top="0" bottom="0" />
@@ -689,14 +711,14 @@ ${rows}
 		<hp:run charPrIDRef="64">
 			<hp:t />
 		</hp:run>
-${renderLinesegArray({ width: '30558', height: String(totalRows * 1431), baseline: '1216' })}
+${renderLinesegArray({ width: '30558', baseline: '1216' })}
 	</hp:p>`;
 }
 
 function renderChoiceParagraphs({ choices, choiceNumerals, nextParagraphId }) {
 	return choices.map((choice, index) => {
 		const paragraphId = nextParagraphId();
-		const numeral = choiceNumerals[index] ?? `${index + 1}.`;
+		const numeral = generateChoiceNumeral(choice, index, choiceNumerals);
 		return `  <hp:p id="${paragraphId}" paraPrIDRef="6" styleIDRef="10" pageBreak="0" columnBreak="0" merged="0">
 		<hp:run charPrIDRef="2">
 			<hp:t>${escapeXml(`${numeral} ${choice}`)}</hp:t>
